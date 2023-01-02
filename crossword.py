@@ -1,4 +1,5 @@
 ############################### CLASS DEFINITION ##############################
+import numpy as np
 
 class CrossWord():
     # Dict of possible directions {name: (delta_row, delta_col)}
@@ -63,6 +64,43 @@ class CrossWord():
         ### YOUR CODE GOES HERE ###
         pass
 
+#---------------AC-3-algorithmus----------------------------------------------------------------------------------------
+    def ac_3(self):
+        queue = list()
+        while queue:
+            xi, xj = queue.pop()
+            if revise(xi, xj):
+                if len(di) == 0:
+                    return False
+
+                for xk in self.neighbors[xi]:
+                    if xk != xj and [xk, xj] not in queue:
+                        queue.append(xk, xi)
+        return True
+
+    def revise(self, xi, xj):
+        revised = False
+
+        for x in di:
+            if ...:
+                revised = True
+
+        return revised
+
+#-----------------Backtraking-------------------------------------------------------------------------------------------
+    def backtraking_search(self):
+        return  self.backtrack()
+
+    def backtrack(self, assignment):
+        if self.test_is_solved(assignment):
+            return assignment
+
+        var = self.select_unassigned_variable(assignment)
+
+        for value in self.order_domain_values(var, assignment):
+            if value is
+
+
 
 ############################### SERVICE METHODS ###############################
 
@@ -80,6 +118,9 @@ def load_grids(path):
 
 
 ################################### SOLVING ###################################
+
+
+
 
 def solve(crossword, words):
     # Fill the empty spaces in crossword with words
