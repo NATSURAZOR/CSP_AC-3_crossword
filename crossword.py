@@ -1,13 +1,20 @@
 ############################### CLASS DEFINITION ##############################
 import numpy as np
 
+
 class CrossWord():
     # Dict of possible directions {name: (delta_row, delta_col)}
     directions = {'down': (1, 0), 'right': (0, 1)}
 
-    def __init__(self, grid):
+    def __init__(self, grid, words):
         self.grid = grid
         self.positions = self.get_positions(grid)
+        print(self.positions)
+        self.words = words
+        self.domains = list()
+        self.set_domains()
+        self.arc_consistency = self.set_arc_consistency()
+
 
     def get_positions(self, grid):
         # Computes list of all possible positions for words.
@@ -64,12 +71,54 @@ class CrossWord():
         ### YOUR CODE GOES HERE ###
         pass
 
-#---------------AC-3-algorithmus----------------------------------------------------------------------------------------
+    # ----
+    def set_arc_consistency(self):
+        def create_points_right(pos, number):
+            array_pos[number] = {(pos[0], pos[1] + increment) for increment in range(pos[2])}
+
+        def create_points_down(pos, number):
+            array_pos[number] = {(pos[0] + increment, pos[1]) for increment in range(pos[2])}
+
+        def set_array_of_word_position():
+            [create_points_right(pos, number)
+             if pos[3] == "right"
+             else create_points_down(pos, number)
+             for number, pos in enumerate(self.positions)]
+
+        def have_same_point():
+            related_pos = []
+            for pos1 in array_pos:
+                for pos2 in array_pos:
+                    if pos1 != pos2:
+                        if bool(array_pos[pos1] & array_pos[pos2]):
+                            related_pos.append((self.positions[pos1], self.positions[pos2]))
+            return related_pos
+
+        array_pos = []
+        set_array_of_word_position()
+        print(array_pos)
+        return have_same_point()
+
+    # ----------- create domains --------------------------------------------------------------------------------------------
+    def set_domains(self):
+        [self.set_words_to_domain(domain_number, self.positions[domain_number][2])
+         for domain_number in range(len(self.positions))]
+
+        # for domain_number in range(len(self.positions)):
+        #     word_length = self.positions[domain_number][2]
+        #     self.set_words_to_domain(domain_number, word_length)
+
+    def set_words_to_domain(self, domain_id, word_length):
+        self.domains.append([])
+        [self.domains[domain_id].append(word) for word in self.words if len(word) == word_length]
+
+    # ---------------AC-3-algorithmus----------------------------------------------------------------------------------------
     def ac_3(self):
-        queue = list()
+        queue = self.arc_consistency.copy()
+
         while queue:
             xi, xj = queue.pop()
-            if revise(xi, xj):
+            if self.revise(xi, xj):
                 if len(di) == 0:
                     return False
 
@@ -78,28 +127,28 @@ class CrossWord():
                         queue.append(xk, xi)
         return True
 
-    def revise(self, xi, xj):
-        revised = False
+    # def revise(self, xi, xj):
+    #     revised = False
+    #
+    #     for x in di:
+    #         if ...:
+    #             revised = True
+    #
+    #     return revised
 
-        for x in di:
-            if ...:
-                revised = True
 
-        return revised
+# -----------------Backtraking-------------------------------------------------------------------------------------------
+# def backtraking_search(self):
+#     return  self.backtrack()
 
-#-----------------Backtraking-------------------------------------------------------------------------------------------
-    def backtraking_search(self):
-        return  self.backtrack()
-
-    def backtrack(self, assignment):
-        if self.test_is_solved(assignment):
-            return assignment
-
-        var = self.select_unassigned_variable(assignment)
-
-        for value in self.order_domain_values(var, assignment):
-            if value is
-
+# def backtrack(self, assignment):
+#     if self.test_is_solved(assignment):
+#         return assignment
+#
+#     var = self.select_unassigned_variable(assignment)
+#
+#     for value in self.order_domain_values(var, assignment):
+#         if value is
 
 
 ############################### SERVICE METHODS ###############################
@@ -120,11 +169,10 @@ def load_grids(path):
 ################################### SOLVING ###################################
 
 
-
-
-def solve(crossword, words):
+def solve(crossword):
     # Fill the empty spaces in crossword with words
     ### YOUR CODE GOES HERE ###
+    crossword.ac_3()
     pass
 
 
@@ -135,28 +183,30 @@ if __name__ == "__main__":
     words = load_words('words.txt')
     grids = load_grids('krizovky.txt')
 
-    ## Examples:
-    dummy_grid = [list(s) for s in ['########', '#      #', '#      #', '#      #', '###    #', '#      #', '########']]
-    cw = CrossWord(dummy_grid)
-    cw.print_grid()  # empty grid
-    print('Positions: ' + str(cw.positions))
-    cw.write_word((2, 1, 5, 'right'), 'hello')
-    cw.write_word((1, 5, 5, 'down'), 'world')
-    cw.write_word((4, 3, 4, 'right'), 'milk')
-    cw.print_grid()  # 3 words already filled in
-    print('Text at position (1,4) down: "' + cw.text_at_pos((1, 4, 5, 'down')) + '"\n\n\n')
+    # ## Examples:
+    # dummy_grid = [list(s) for s in ['########', '#      #', '#      #', '#      #', '###    #', '#      #', '########']]
+    # cw = CrossWord(dummy_grid)
+    # cw.print_grid()  # empty grid
+    # print('Positions: ' + str(cw.positions))
+    # cw.write_word((2, 1, 5, 'right'), 'hello')
+    # cw.write_word((1, 5, 5, 'down'), 'world')
+    # cw.write_word((4, 3, 4, 'right'), 'milk')
+    # cw.print_grid()  # 3 words already filled in
+    # print('Text at position (1,4) down: "' + cw.text_at_pos((1, 4, 5, 'down')) + '"\n\n\n')
 
     points = [0.5, 1, 1, 1, 1.5, 1.5, 2, 2, 1.5, 2]
     points_so_far = 0
     # Solve crosswords (the last one is a bonus)
     # instead of range(len(grids)) specify in which order do you want your crosswords to be tested
-    for i in range(len(grids)):
-        print('==== Crossword No.' + str(i + 1) + ' ====')
-        cw = CrossWord(grids[i])
-        solve(cw, words)
-        cw.print_grid()
-
-        points_so_far += points[i]
-        print(f'Given all the solved crosswords are correct, you have so far {points_so_far}'
-              ' (+ max 3 for code and readme) points!')
-
+    cw = CrossWord(grids[0], words)
+    solve(cw)
+    cw.print_grid()
+    # for i in range(len(grids)):
+    #     print('==== Crossword No.' + str(i + 1) + ' ====')
+    #     cw = CrossWord(grids[i], words)
+    #     solve(cw)
+    #     cw.print_grid()
+    #
+    #     points_so_far += points[i]
+    #     print(f'Given all the solved crosswords are correct, you have so far {points_so_far}'
+    #           ' (+ max 3 for code and readme) points!')
