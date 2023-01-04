@@ -2,18 +2,47 @@
 import numpy as np
 
 
+class Word:
+    def __init__(self, row, col, l, d):
+        self.row = row
+        self.col = col
+        self.l = l
+        self.d = d
+        self.value = None
+
+    def __len__(self):
+        return self.l
+
+    def __eq__(self, other):
+        return self.row == other.row and self.col == other.col and self.d == other.d
+
+    def __repr__(self):
+        return f'Word({self.row}, {self.col}, {self.l}, {self.d}, {self.value})'
+
+class Connection:
+    def __init__(self, word1, word2, row, col):
+        self.word1 = word1
+        self.word2 = word2 
+        self.row = row
+        self.col = col
+
+    def __repr__(self):
+        return f'Connection({self.word1}, {self.word2}, {self.row}, {self.col})'
+
 class CrossWord():
     # Dict of possible directions {name: (delta_row, delta_col)}
     directions = {'down': (1, 0), 'right': (0, 1)}
 
     def __init__(self, grid, words):
         self.grid = grid
-        self.positions = self.get_positions(grid)
-        print(self.positions)
+        self.positions = [Word(*w) for w in self.get_positions(grid)]
+        self.connections = []
         self.words = words
         self.domains = list()
         self.set_domains()
-        self.arc_consistency = self.set_arc_consistency()
+        self.perform_node_consistency()
+        print(self.connections)
+        # self.arc_consistency = self.set_arc_consistency()
 
 
     def get_positions(self, grid):
@@ -101,16 +130,31 @@ class CrossWord():
 
     # ----------- create domains --------------------------------------------------------------------------------------------
     def set_domains(self):
-        [self.set_words_to_domain(domain_number, self.positions[domain_number][2])
+        [self.set_words_to_domain(domain_number, len(self.positions[domain_number]))
          for domain_number in range(len(self.positions))]
-
-        # for domain_number in range(len(self.positions)):
-        #     word_length = self.positions[domain_number][2]
-        #     self.set_words_to_domain(domain_number, word_length)
 
     def set_words_to_domain(self, domain_id, word_length):
         self.domains.append([])
         [self.domains[domain_id].append(word) for word in self.words if len(word) == word_length]
+
+
+    #------------ node consistency ------------------------------------------------------------------------------------------
+    def perform_node_consistency(self):
+        self.find_connections()
+        # TODO
+
+    def find_connections(self):
+        for i in range(len(self.positions)):
+            for j in range(i+1, len(self.positions)):
+                word1 = self.positions[i]
+                word2 = self.positions[j]
+                if word1.d != word2.d:
+                    if word1.d == 'right' and word2.row <= word1.row and word2.row + len(word2) >= word1.row:
+                        if word2.col >= word1.col and word1.col + len(word1) >= word2.col:
+                            self.connections.append(Connection(word1, word2, word1.row, word2.col))
+                    elif word1.d == 'down' and word2.col <= word1.col and word2.col + len(word2) >= word1.col:
+                        if word2.row >= word1.row and word1.row + len(word1) >= word2.row:
+                            self.connections.append(Connection(word1, word2, word1.col, word2.row))
 
     # ---------------AC-3-algorithmus----------------------------------------------------------------------------------------
     def ac_3(self):
