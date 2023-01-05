@@ -3,15 +3,20 @@ import numpy as np
 
 
 class Word:
-    def __init__(self, row, col, l, d):
+    def __init__(self, row, col, l, d, id, domain):
+        self.id = id
         self.row = row
         self.col = col
         self.l = l
         self.d = d
         self.value = None
+        self.domain = domain
+        self.neighbors = []
 
-    def __len__(self):
-        return self.l
+    def neighbors_without(self, negihbor):
+        copy_neigbors = self.neighbors.copy()
+        copy_neigbors.remove(negihbor)
+        return copy_neigbors
 
     def __eq__(self, other):
         return self.row == other.row and self.col == other.col and self.d == other.d
@@ -19,15 +24,17 @@ class Word:
     def __repr__(self):
         return f'Word({self.row}, {self.col}, {self.l}, {self.d}, {self.value})'
 
+
 class Connection:
     def __init__(self, word1, word2, row, col):
         self.word1 = word1
-        self.word2 = word2 
+        self.word2 = word2
         self.row = row
         self.col = col
 
     def __repr__(self):
         return f'Connection({self.word1}, {self.word2}, {self.row}, {self.col})'
+
 
 class CrossWord():
     # Dict of possible directions {name: (delta_row, delta_col)}
@@ -35,15 +42,17 @@ class CrossWord():
 
     def __init__(self, grid, words):
         self.grid = grid
-        self.positions = [Word(*w) for w in self.get_positions(grid)]
+        self.positions = self.get_positions(grid)
         self.connections = []
         self.words = words
         self.domains = list()
         self.set_domains()
-        self.perform_node_consistency()
+        self.crosword_word_list = [Word(*w, id, self.domains[id]) for id, w in enumerate(self.positions)]
+        self.find_connections()
         print(self.connections)
-        # self.arc_consistency = self.set_arc_consistency()
-
+        for i in self.domains:
+            print(len(i))
+        print()
 
     def get_positions(self, grid):
         # Computes list of all possible positions for words.
@@ -100,85 +109,95 @@ class CrossWord():
         ### YOUR CODE GOES HERE ###
         pass
 
-    # ----
-    def set_arc_consistency(self):
-        def create_points_right(pos, number):
-            array_pos[number] = {(pos[0], pos[1] + increment) for increment in range(pos[2])}
-
-        def create_points_down(pos, number):
-            array_pos[number] = {(pos[0] + increment, pos[1]) for increment in range(pos[2])}
-
-        def set_array_of_word_position():
-            [create_points_right(pos, number)
-             if pos[3] == "right"
-             else create_points_down(pos, number)
-             for number, pos in enumerate(self.positions)]
-
-        def have_same_point():
-            related_pos = []
-            for pos1 in array_pos:
-                for pos2 in array_pos:
-                    if pos1 != pos2:
-                        if bool(array_pos[pos1] & array_pos[pos2]):
-                            related_pos.append((self.positions[pos1], self.positions[pos2]))
-            return related_pos
-
-        array_pos = []
-        set_array_of_word_position()
-        print(array_pos)
-        return have_same_point()
-
-    # ----------- create domains --------------------------------------------------------------------------------------------
+    # ----------- create domains -------------------------------------------------------------------------------------------
     def set_domains(self):
-        [self.set_words_to_domain(domain_number, len(self.positions[domain_number]))
+        [self.set_words_to_domain(domain_number, self.positions[domain_number][2])
          for domain_number in range(len(self.positions))]
 
     def set_words_to_domain(self, domain_id, word_length):
         self.domains.append([])
         [self.domains[domain_id].append(word) for word in self.words if len(word) == word_length]
 
-
-    #------------ node consistency ------------------------------------------------------------------------------------------
-    def perform_node_consistency(self):
-        self.find_connections()
-        # TODO
-
+    # ------------ node consistency ----------------------------------------------------------------------------------------
     def find_connections(self):
-        for i in range(len(self.positions)):
-            for j in range(i+1, len(self.positions)):
-                word1 = self.positions[i]
-                word2 = self.positions[j]
-                if word1.d != word2.d:
-                    if word1.d == 'right' and word2.row <= word1.row and word2.row + len(word2) >= word1.row:
-                        if word2.col >= word1.col and word1.col + len(word1) >= word2.col:
-                            self.connections.append(Connection(word1, word2, word1.row, word2.col))
-                    elif word1.d == 'down' and word2.col <= word1.col and word2.col + len(word2) >= word1.col:
-                        if word2.row >= word1.row and word1.row + len(word1) >= word2.row:
-                            self.connections.append(Connection(word1, word2, word1.col, word2.row))
+        for i in range(len(self.crosword_word_list)):
+            for j in range(i + 1, len(self.crosword_word_list)):
+                word1 = self.crosword_word_list[i]
+                word2 = self.crosword_word_list[j]
+                connection = self.find_conncection_two_words(word1, word2)
+                if connection is not None:
+                    self.connections.append(Connection(*connection))
+                    if word2 not in word1.neighbors:
+                        word1.neighbors.append(word2)
+                    if word1 not in word2.neighbors:
+                        word2.neighbors.append(word1)
 
-    # ---------------AC-3-algorithmus----------------------------------------------------------------------------------------
+    def find_conncection_two_words(self, word1, word2):
+        if word1.d == word2.d:
+            return None
+
+        if word1.d == 'right':
+            array_pos_word1 = [(word1.row, word1.col + i) for i in range(word1.l)]
+            array_pos_word2 = [(word2.row + i, word2.col) for i in range(word2.l)]
+            for pos in array_pos_word1:
+                if pos in array_pos_word2:
+                    return word1, word2, pos[0], pos[1]
+        elif word1.d == 'down':
+            array_pos_word1 = [(word1.row + i, word1.col) for i in range(word1.l)]
+            array_pos_word2 = [(word2.row, word2.col + i) for i in range(word2.l)]
+            for pos in array_pos_word1:
+                if pos in array_pos_word2:
+                    return word2, word1, pos[0], pos[1]
+
+        # if word1.d == 'right' and word2.row <= word1.row < word2.row + word2.l:
+        #     if word1.col <= word2.col <= word1.col + word1.l:
+        #         return word1, word2, word1.row, word2.col
+        #
+        # elif word1.d == 'down' and word2.col <= word1.col < word2.col + word2.l:
+        #     if word1.row <= word2.row <= word1.row + word1.l:
+        #         return word1, word2, word1.col, word2.row
+
+        return None
+
+    # -------------- AC-3-algorithmus --------------------------------------------------------------------------------------
     def ac_3(self):
-        queue = self.arc_consistency.copy()
+        queue = self.connections.copy()
 
         while queue:
-            xi, xj = queue.pop()
-            if self.revise(xi, xj):
-                if len(di) == 0:
+            connection = queue.pop()
+            xi, xj, row, col = connection.word1, connection.word2, connection.row, connection.col
+            if self.revise(xi, xj, row, col):
+                if len(xi.domain) == 0:
                     return False
+                for xk in xi.neighbors_without(xj):
+                    queue.append(Connection(*self.find_conncection_two_words(xk, xi)))
 
-                for xk in self.neighbors[xi]:
-                    if xk != xj and [xk, xj] not in queue:
-                        queue.append(xk, xi)
+        for i in self.domains:
+            print(len(i))
+        print()
+        # for i in self.crosword_word_list:
+        #     print(i.domain)
         return True
 
-    # def revise(self, xi, xj):
-    #     revised = False
-    #
-    #     for x in di:
-    #         if ...:
-    #             revised = True
-    #
-    #     return revised
+    def revise(self, xi, xj, row, col):
+        def find_value_in_xjDomain(xiWord):
+            letter_number_inXi = col - xi.col
+            letter_number_inXj = row - xj.row
+
+            for word in xj.domain:
+                if word[letter_number_inXj] == xiWord[letter_number_inXi] and word != xiWord:
+                    return True
+
+            return False
+
+        revised = False
+
+        for x in xi.domain:
+            if not find_value_in_xjDomain(x):
+                xi.domain.remove(x)
+                revised = True
+
+        return revised
 
 
 # -----------------Backtraking-------------------------------------------------------------------------------------------
@@ -241,16 +260,18 @@ if __name__ == "__main__":
     points = [0.5, 1, 1, 1, 1.5, 1.5, 2, 2, 1.5, 2]
     points_so_far = 0
     # Solve crosswords (the last one is a bonus)
-    # instead of range(len(grids)) specify in which order do you want your crosswords to be tested
-    cw = CrossWord(grids[0], words)
-    solve(cw)
-    cw.print_grid()
-    # for i in range(len(grids)):
-    #     print('==== Crossword No.' + str(i + 1) + ' ====')
-    #     cw = CrossWord(grids[i], words)
-    #     solve(cw)
-    #     cw.print_grid()
-    #
-    #     points_so_far += points[i]
-    #     print(f'Given all the solved crosswords are correct, you have so far {points_so_far}'
-    #           ' (+ max 3 for code and readme) points!')
+    #instead of range(len(grids)) specify in which order do you want your crosswords to be tested
+    # cw = CrossWord(grids[0], words)
+    # solve(cw)
+    # cw.print_grid()
+
+
+    for i in range(len(grids)):
+        print('==== Crossword No.' + str(i + 1) + ' ====')
+        cw = CrossWord(grids[i], words)
+        solve(cw)
+        cw.print_grid()
+
+        points_so_far += points[i]
+        print(f'Given all the solved crosswords are correct, you have so far {points_so_far}'
+              ' (+ max 3 for code and readme) points!')
